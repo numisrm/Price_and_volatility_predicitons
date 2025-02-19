@@ -1,1 +1,1 @@
-Hello mate
+pip install -r requirements.txt
