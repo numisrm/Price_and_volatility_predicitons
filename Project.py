@@ -3,6 +3,6 @@ import yfinance as yf
 ticker = "AAPL"
 stock = yf.Ticker(ticker)
 
-hist = stock.history(period="5d")
+appl = yf.download("AAPL", start="2023-01-01", end="2023-06-30")
 
-print(hist)
+print(type(appl))
