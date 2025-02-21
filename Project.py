@@ -1,4 +1,5 @@
 import yfinance as yf
+import pandas as pd
 
 ticker = "AAPL"
 stock = yf.Ticker(ticker)
