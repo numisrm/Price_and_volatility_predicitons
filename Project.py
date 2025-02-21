@@ -1,7 +1,7 @@
 import yfinance as yf
 
 # Define stock symbols
-stocks = ["AAPL", "MSFT"]
+stocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "BRK-B", "V", "JNJ"]
 
 # Fetch data for the last year
 data = yf.download(stocks, period="1y", interval="1d")
