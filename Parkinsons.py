@@ -63,3 +63,4 @@ def plotVolatility(ticker):
 
 plotVolatility("AAPL")
 plotAllVolatility()
+weekly_vol_df.to_csv('weekly_parkinson_volatility.csv', index=False)
