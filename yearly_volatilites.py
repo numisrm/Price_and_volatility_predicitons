@@ -1,14 +1,7 @@
 import pandas as pd
 import numpy as np
 
-# Read close data
 close = pd.read_csv("close_data.csv")
-
-# Check which columns have non-numeric values
-non_numeric = close.applymap(lambda x: not isinstance(x, (int, float))).any()
-# print("Columns with non-numeric values:")
-# print(non_numeric)
-# All the data is numeric
 
 def get_yearly_vol(column_name):
     
