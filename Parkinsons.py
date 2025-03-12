@@ -35,21 +35,31 @@ weekly_vol_df = pd.DataFrame(weekly_results)
 weekly_vol_df.sort_values("Week", inplace=True)
 print(weekly_vol_df)
 
+def plotAllVolatility():
+    weekly_vol_df['Week'] = pd.to_datetime(weekly_vol_df['Week'])
+    weekly_vol_df.set_index('Week', inplace=True)
+    plt.figure(figsize=(12, 6))
+    for ticker in weekly_vol_df.columns:
+        plt.plot(weekly_vol_df.index, weekly_vol_df[ticker], marker='o', label=ticker)
 
-weekly_vol_df['Week'] = pd.to_datetime(weekly_vol_df['Week'])
+    plt.title("Weekly Parkinson Volatility by Ticker")
+    plt.xlabel("Week")
+    plt.ylabel("Volatility")
+    plt.legend(title="Ticker")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
-# Set the Week column as the index for plotting convenience
-weekly_vol_df.set_index('Week', inplace=True)
-
-# Plot settings
-plt.figure(figsize=(12, 6))
-for ticker in weekly_vol_df.columns:
+def plotVolatility(ticker):
+    plt.figure(figsize=(12, 6))
     plt.plot(weekly_vol_df.index, weekly_vol_df[ticker], marker='o', label=ticker)
+    plt.title(f"Weekly Parkinson Volatility for {ticker}")
+    plt.xlabel("Week")
+    plt.ylabel("Volatility")
+    plt.legend(title="Ticker")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
-plt.title("Weekly Parkinson Volatility by Ticker")
-plt.xlabel("Week")
-plt.ylabel("Volatility")
-plt.legend(title="Ticker")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+plotVolatility("AAPL")
+plotAllVolatility()
