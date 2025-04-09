@@ -14,7 +14,7 @@ returns = np.log(df / df.shift(1)).dropna()
 
 p_values = [1, 2]
 q_values = [1, 2]
-mean_values = ['Constant', 'AR', 'Zero']  # renamed to avoid conflict
+mean_values = ['Constant', 'AR', 'Zero'] 
 
 results_list = []
 best_params_dict = {}
