@@ -3,91 +3,99 @@ import numpy as np
 from arch import arch_model
 from itertools import product
 import matplotlib.pyplot as plt
+import sys
+import os
 import warnings
-from arch.univariate.base import DataScaleWarning
-warnings.simplefilter("ignore", DataScaleWarning)
 
-df = pd.read_csv("close_data.csv", parse_dates=['Date'])
+warnings.filterwarnings("ignore")
+sys.stderr = open(os.devnull, 'w')
+
+df = pd.read_csv("average_close_sp500.csv", parse_dates=['Date'])
 df.set_index('Date', inplace=True)
-
 returns = np.log(df / df.shift(1)).dropna()
+avg_returns = returns['Average Close']
 
 p_values = [1, 2]
 q_values = [1, 2]
-mean_values = ['Constant', 'AR', 'Zero'] 
+mean_values = ['Constant', 'AR', 'Zero']
+dist_values = ['normal', 't']
+window_values = [7,14]
 
 results_list = []
-best_params_dict = {}
-stock = 'AAPL'
-
-stock_returns = returns[stock].dropna()
-best_aic = np.inf
+best_error = np.inf
 best_params = None
 
-for p, q, mean_type in product(p_values, q_values, mean_values):
+for p, q, mean_type, dist_type, window in product(p_values, q_values, mean_values, dist_values, window_values):
     try:
-        model = arch_model(stock_returns, p=p, q=q, mean=mean_type, vol='GARCH', dist='normal', rescale=False)
-        res = model.fit(disp='off')
-        aic = res.aic
-
+        print(f"Testing GARCH({p},{q}) with mean={mean_type}, dist={dist_type}, window={window}")
+        forecasted_vol_list = []
+        for i in range(window, len(avg_returns)):
+            train = avg_returns.iloc[i - window:i]
+            model = arch_model(train, p=p, q=q, mean=mean_type, vol='GARCH', dist=dist_type, rescale=False)
+            res = model.fit(disp='off')
+            forecast = res.forecast(horizon=1)
+            vol_forecast = np.sqrt(forecast.variance.values[-1, 0])
+            forecasted_vol_list.append(vol_forecast)
+        
+        forecasted_vol_series = pd.Series(forecasted_vol_list, index=avg_returns.index[window:])
+        realized_vol_series = avg_returns.rolling(window).std().iloc[window:]
+        forecasted_vol_series = forecasted_vol_series.loc[realized_vol_series.index]
+        mse = np.mean((forecasted_vol_series - realized_vol_series) ** 2)
+        
         results_list.append({
-            'Stock': stock,
             'p': p,
             'q': q,
             'mean': mean_type,
-            'AIC': aic
+            'dist': dist_type,
+            'window': window,
+            'MSE': mse
         })
-
-        if aic < best_aic:
-            best_aic = aic
-            best_params = {'p': p, 'q': q, 'mean': mean_type, 'AIC': aic}
-
-    except Exception as e:
+        
+        if mse < best_error:
+            best_error = mse
+            best_params = {'p': p, 'q': q, 'mean': mean_type, 'dist': dist_type, 'window': window, 'MSE': mse}
+    
+    except Exception:
         results_list.append({
-            'Stock': stock,
             'p': p,
             'q': q,
             'mean': mean_type,
-            'AIC': np.nan
+            'dist': dist_type,
+            'window': window,
+            'MSE': np.nan
         })
-
-best_params_dict[stock] = best_params
 
 results_df = pd.DataFrame(results_list)
-print("AIC for all models tested:")
+print("Forecast MSE for all models tested:")
 print(results_df)
 
-if stock in best_params_dict and best_params_dict[stock] is not None:
-    params = best_params_dict[stock]
-    print("\nBest parameters for", stock, ":", params)
+if best_params is not None:
+    print("\nBest parameters for Average Close according to forecasting error (MSE):", best_params)
     
-    stock_returns = returns[stock].dropna()
-    window = 10 
-    forecasted_vol = []
-
-    for i in range(window, len(stock_returns)):
-        train = stock_returns[i - window:i]
-        model = arch_model(train, p=params['p'], q=params['q'],
-                           mean=params['mean'], vol='GARCH', dist='normal')
+    best_window = best_params['window']
+    forecasted_vol_list = []
+    
+    for i in range(best_window, len(avg_returns)):
+        train = avg_returns.iloc[i - best_window:i]
+        model = arch_model(train, p=best_params['p'], q=best_params['q'],
+                           mean=best_params['mean'], vol='GARCH', dist=best_params['dist'], rescale=False)
         res = model.fit(disp='off')
         forecast = res.forecast(horizon=1)
         vol_forecast = np.sqrt(forecast.variance.values[-1, 0])
-        forecasted_vol.append(vol_forecast)
+        forecasted_vol_list.append(vol_forecast)
     
-    forecasted_vol = pd.Series(forecasted_vol, index=stock_returns.index[window:])
-
-    realized_vol = stock_returns.rolling(window).std()[window:]
-
+    forecasted_vol_series = pd.Series(forecasted_vol_list, index=avg_returns.index[best_window:])
+    realized_vol_series = avg_returns.rolling(best_window).std().iloc[best_window:]
+    
     plt.figure(figsize=(12, 6))
-    plt.plot(forecasted_vol, label="GARCH Forecasted Volatility")
-    plt.plot(realized_vol, label="Realized Volatility (10-day rolling)", linestyle='--')
-    plt.title(f"{stock} - Forecasted vs Realized Volatility (Optimized p and q)")
+    plt.plot(forecasted_vol_series, label="GARCH Forecasted Volatility")
+    plt.plot(realized_vol_series, label="Realized Volatility (Rolling)")
+    plt.title("S&P 500 Average Close - Forecasted vs Realized Volatility\n(Optimized Hyperparameters)")
     plt.xlabel("Date")
     plt.ylabel("Volatility (Std Dev of Log Returns)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
 else:
-    print(f"No valid best model found for {stock}.")
+    print("No valid GARCH model found.")
